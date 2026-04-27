@@ -9,12 +9,12 @@
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{ "type": "command", "command": "npm run verify:fast 2>&1 | tail -50" }]
+        "hooks": [{ "type": "command", "command": ".claude/hooks/verify-fast.sh" }]
       }
     ],
     "Stop": [
       {
-        "hooks": [{ "type": "command", "command": "npm run verify:full 2>&1 | tail -100" }]
+        "hooks": [{ "type": "command", "command": ".claude/hooks/verify-full.sh" }]
       }
     ],
     "SessionStart": [
