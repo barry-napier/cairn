@@ -1,3 +1,35 @@
+# CAIRN
+
+Verification contract for this app. The harness gates code at four layers: instructions (this file), Claude Code hooks, local git hooks, and CI. All gates call the same `npm run verify:*` script contract — use those, don't invoke tools directly.
+
+## Verification contract
+
+- `npm run verify:fast` — vp check with auto-fix; runs after every Edit/Write via PostToolUse hook.
+- `npm run verify:test` — Vitest unit/integration; excludes `e2e/`.
+- `npm run verify:e2e` — Playwright; auto-starts dev server.
+- `npm run verify:convex:dev` — convex codegen + typecheck against local deployment.
+- `npm run verify:convex:prod` — convex deploy --dry-run; catches schema migrations that would fail in prod.
+- `npm run verify:full` — convex:dev + fast + test + build; runs at Stop hook and pre-push.
+- `npm run verify:dev` — full + e2e; PR CI tier.
+- `npm run verify:prod` — dev + convex:prod; production deploy tier.
+
+Before declaring a task done: `verify:full` must pass. The Stop hook enforces this; do not work around it.
+
+## Stack rules
+
+- **Convex.** Backend code lives in `convex/`. Generated files in `convex/_generated/` are committed but auto-formatted — do not hand-edit. The convex dir has its own `tsconfig.json` with node types; root tsconfig does not.
+- **Better Auth.** Wired via `@convex-dev/better-auth`. Auth state owned by the component (its own tables, not in `schema.ts`). Required env vars on the Convex deployment: `BETTER_AUTH_SECRET`, `SITE_URL`. Set via `npx convex env set`, never hardcode.
+- **Vite+.** All package manager operations through `vp` wrappers, not raw npm/pnpm. Do not install `vitest` directly — it ships through the `vite-plus-test` override. Importing test utilities: `from "vite-plus/test"`, not `from "vitest"`.
+- **TypeScript.** Strict mode is on. `noUnusedLocals` and `noUnusedParameters` are enforced — prefix intentionally unused with `_`.
+
+## Do not
+
+- Use `git push --no-verify` or `git commit --no-verify` to bypass gates. If a gate fails, fix the cause.
+- Edit files under `convex/_generated/` or `dist/` by hand; they regenerate.
+- Add `vitest` or `vite` as direct dependencies; both come from the Vite+ overrides.
+- Commit secrets to `.env.local`; secrets go on the Convex deployment via `npx convex env set`.
+- Skip Conventional Commits format — the commit-msg hook will reject anything else.
+
 <!--VITE PLUS START-->
 
 # Using Vite+, the Unified Toolchain for the Web
