@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2023"],
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx"
+  },
+  "include": ["."]
+}
