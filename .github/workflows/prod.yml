@@ -1,0 +1,20 @@
+name: prod
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          cache: true
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:dev
+      # TODO: switch to verify:prod once a Convex prod deployment is configured.
+      # That requires CONVEX_DEPLOY_KEY in repo secrets.
