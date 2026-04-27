@@ -10,6 +10,7 @@
     "prepare": "vp config"
   },
   "dependencies": {
+    "convex": "^1.36.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

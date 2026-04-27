@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "./assets/vite.svg";
 import heroImg from "./assets/hero.png";
@@ -6,6 +8,7 @@ import "./App.css";
 
 function App() {
   const [count, setCount] = useState(0);
+  const greeting = useQuery(api.hello.get);
 
   return (
     <>
@@ -20,6 +23,7 @@ function App() {
           <p>
             Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
           </p>
+          <p>Convex says: {greeting ?? "loading..."}</p>
         </div>
         <button type="button" className="counter" onClick={() => setCount((count) => count + 1)}>
           Count is {count}
