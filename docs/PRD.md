@@ -85,7 +85,7 @@ The "user" here is the developer (Barry) adopting CAIRN into a bnapier.dev app, 
 17. As an agent, I want a `PreToolUse` hook on Bash commands that blocks destructive operations (`rm -rf /`, force-push, schema replace, prod force-deploy), so that I cannot accidentally cause irreversible damage.
 18. As an agent, I want hook output piped through `tail -50` or `tail -100`, so that long error logs do not consume my context window.
 19. As a developer, I want a `SessionStart` hook that injects current branch, last commit, and uncommitted-files state into the agent context, so that the agent knows where the project currently stands without asking.
-20. As a developer, I want all hook scripts to live under `.claude/hooks/` in plain JavaScript or shell, so that they are version-controlled, transparent, and auditable.
+20. As a developer, I want all hook scripts to live under `.claude/hooks/` in shell (or plain JavaScript where shell is awkward), so that they are version-controlled, transparent, and auditable.
 21. As a developer, I want hook scripts to exit 0 silently on success and exit non-zero with terse stderr on failure, so that the success case is free and the failure case is actionable.
 
 ### Script contract layer
@@ -97,14 +97,14 @@ The "user" here is the developer (Barry) adopting CAIRN into a bnapier.dev app, 
 26. As a developer, I want the script contract to use `npm-run-all` for parallel and serial composition, so that independent checks run concurrently and dependent checks run in order.
 27. As a developer, I want individual script atoms (`verify:lint`, `verify:types`, `verify:convex`, `verify:test`, `verify:build`) callable independently, so that I can debug a single failing layer without running the whole stack.
 
-### Local enforcement (lefthook + commitlint)
+### Local enforcement (Vite+ git hooks + commitlint)
 
-28. As a developer, I want a `lefthook.yml` running `verify:fast` plus changed-file tests in parallel on every commit, so that broken code cannot enter the repo locally.
-29. As a developer, I want `lefthook.yml` running `verify:full` on every push, so that broken pushes are caught before reaching CI.
-30. As a developer, I want lefthook's `stage_fixed: true` configured for the formatter, so that auto-format fixes are re-staged automatically without an "unstaged changes" loop.
+28. As a developer, I want the pre-commit hook running `verify:fast` (vp check --fix on staged files) on every commit, so that broken code cannot enter the repo locally.
+29. As a developer, I want the pre-push hook running `verify:full` on every push, so that broken pushes are caught before reaching CI.
+30. As a developer, I want auto-formatted fixes to be re-staged automatically, so that I do not hit an "unstaged changes" loop after the formatter runs.
 31. As a developer, I want commitlint enforcing Conventional Commits format on every commit message, so that history is structured and changelogs are mechanically generatable.
-32. As a developer, I want lefthook to use `{staged_files}` glob expansion for linters and formatters, so that hooks stay fast on incremental changes.
-33. As a developer, I want lefthook to run `tsc --noEmit` on the whole project (not staged files), so that type-checking is correct rather than scoped-and-misleading.
+32. As a developer, I want lint and format hooks scoped to staged files, so that pre-commit stays under its 15-second budget on incremental changes.
+33. As a developer, I want type-checking and tests in pre-push to run against the whole project (not staged files), so that pre-push is correct rather than scoped-and-misleading.
 
 ### Authoritative enforcement (GitHub Actions + branch protection + Vercel)
 
@@ -177,10 +177,10 @@ The "user" here is the developer (Barry) adopting CAIRN into a bnapier.dev app, 
 
 ### Tooling choices
 
-- **lefthook over Husky.** Faster (Go binary, no Node startup), parallel by default, single config file, built-in `{staged_files}` template (no separate lint-staged needed).
-- **commitlint with `@commitlint/config-conventional`.** Industry-standard Conventional Commits enforcement.
-- **Biome over ESLint + Prettier.** Already bundled in Vite+. Faster. Single tool, single config. ESLint plugins are not needed for the bnapier.dev stack.
-- **Vitest over Jest.** Bundled in Vite+. Native Vite/Vite+ integration. `--changed` flag for fast incremental runs.
+- **Vite+ git hooks (`vp config`) over lefthook or Husky.** Vite+ already bundles a hook installer wired to its check/format/test pipelines via `lint-staged`, so adding lefthook would be a duplicate runtime. The `lint-staged.config.*` pattern matches `{staged_files}` semantics; commitlint is invoked from the commit-msg hook the same way it would be under lefthook. (Earlier PRD drafts named lefthook explicitly; reconciled to the realised stack.)
+- **commitlint with `@commitlint/config-conventional`.** Industry-standard Conventional Commits enforcement, invoked from the commit-msg hook.
+- **Oxlint + oxfmt (via `vp check`) over Biome.** Vite+ ships these as its lint/format pipeline. Single command, single config, type-aware lint built in. (Earlier PRD drafts named Biome; reconciled to the realised stack.)
+- **Vitest over Jest.** Bundled in Vite+ via the `vite-plus-test` override. Native Vite integration. `--changed` flag for fast incremental runs.
 - **GitHub Actions over alternative CI.** Native GitHub integration. Free for public repos and within Barry's existing usage tier.
 - **Vercel for deploy.** Standard across all bnapier.dev apps. Native preview deploy per branch.
 - **Convex CLI's `--typecheck=enable` flag.** Catches frontend/backend drift during dev verification. Convex's typed contract is the single most valuable verification primitive in the stack.
@@ -304,26 +304,29 @@ github.com/barry-napier/cairn/
 ├── README.md
 ├── CHANGELOG.md
 ├── docs/
+│   ├── PRD.md
 │   ├── architecture.md
 │   ├── adoption-new.md
 │   ├── adoption-retrofit.md
 │   ├── checklist.md
 │   └── rationale.md
-├── reference/
-│   ├── package.json.snippet
-│   ├── lefthook.yml
+├── reference/                     # the cairn repo IS the reference; these
+│   ├── package.json               # paths are top-level today and copied
+│   ├── lint-staged.config.*       # by adopters into their own repo
 │   ├── commitlint.config.js
 │   ├── vercel.json
+│   ├── scripts/
+│   │   └── verify-convex-prod.sh
 │   ├── .github/workflows/dev.yml
 │   ├── .github/workflows/prod.yml
 │   ├── .claude/
 │   │   ├── settings.json
 │   │   ├── hooks/
-│   │   │   ├── block-dangerous.js
-│   │   │   └── session-context.js
-│   │   └── skills/
-│   │       ├── convex-mutations/SKILL.md
-│   │       └── debugging-types/SKILL.md
+│   │   │   ├── block-dangerous.sh
+│   │   │   ├── session-context.sh
+│   │   │   ├── verify-fast.sh
+│   │   │   └── verify-full.sh
+│   │   └── skills/                # starter skills (TBD)
 │   └── CLAUDE.md
 └── LICENSE
 ```
