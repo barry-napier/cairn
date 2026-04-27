@@ -40,6 +40,7 @@ All layers call the same `npm run verify:*` script contract, so the verification
 The dev/prod pipeline split is built in: a "dev pipeline" gates merges to `main` with fast feedback, and a "prod pipeline" gates production deploys with strict checks. Two Convex deployments (dev and prod) prevent schema disasters from reaching users.
 
 The deliverable for v1 is a **documentation repository** at `github.com/barry-napier/cairn` containing:
+
 - A canonical `README.md` explaining the pattern and decision rationale
 - A reference implementation directory containing every config file, script, and hook required
 - Step-by-step adoption guide for new apps
@@ -276,7 +277,7 @@ CAIRN extends the existing CAIRN/Sevro architectural family. CAIRN was originall
 
 ### Relationship to Sevro
 
-Sevro is the agentic orchestration layer (Claude Code + launchd cron + MCP + bash). CAIRN is the verification scaffolding *inside* a Sevro-orchestrated workflow. Sevro is "what the agent does." CAIRN is "what stops the agent from doing it wrong." The two are complementary; neither subsumes the other.
+Sevro is the agentic orchestration layer (Claude Code + launchd cron + MCP + bash). CAIRN is the verification scaffolding _inside_ a Sevro-orchestrated workflow. Sevro is "what the agent does." CAIRN is "what stops the agent from doing it wrong." The two are complementary; neither subsumes the other.
 
 ### The ratchet philosophy
 
