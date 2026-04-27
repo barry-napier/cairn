@@ -8,4 +8,7 @@ export default defineConfig({
   },
   fmt: {},
   lint: { options: { typeAware: true, typeCheck: true } },
+  test: {
+    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**"],
+  },
 });
