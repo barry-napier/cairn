@@ -7,7 +7,16 @@
     "dev": "vp dev",
     "build": "tsc && vp build",
     "preview": "vp preview",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "verify:fast": "vp check --fix",
+    "verify:strict": "vp check",
+    "verify:test": "vp test --passWithNoTests",
+    "verify:convex:dev": "convex dev --once --typecheck=enable",
+    "verify:convex:prod": "convex deploy --dry-run --typecheck=enable",
+    "verify:build": "tsc && vp build",
+    "verify:full": "run-s verify:convex:dev verify:fast verify:test verify:build",
+    "verify:dev": "run-s verify:full",
+    "verify:prod": "run-s verify:full verify:convex:prod"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.0",
@@ -21,6 +30,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "npm-run-all2": "^8.0.4",
     "typescript": "~6.0.2",
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
     "vite-plus": "latest"
