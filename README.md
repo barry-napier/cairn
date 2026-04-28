@@ -2,7 +2,9 @@
 
 > A verification scaffolding for AI-driven coding on the bnapier.dev stack.
 
-CAIRN is a documented, opinionated set of enforcement gates wrapped around a single `npm run verify:*` script contract. It exists so Claude Code (or any agent operating inside one of these repos) cannot ship broken code — to commit, to push, to merge, or to deploy. This repository is the canonical reference implementation. To adopt CAIRN in a new app, copy the relevant pieces; do not depend on this repo as a package.
+CAIRN is a documented, opinionated set of enforcement gates wrapped around a single `npm run verify:*` script contract. It exists so Claude Code (or any agent operating inside one of these repos) cannot ship broken code — to commit, to push, to merge, or to deploy.
+
+This repository is both the canonical reference and the GitHub template. To start a new app, click **Use this template** at the top of the GitHub page (or `gh repo create <name> --template barry-napier/cairn`). The harness is preinstalled; the post-clone steps are listed below.
 
 **Stack assumed:** Vite+ · React 19 · TypeScript strict · Convex · Better Auth · Vercel · Claude Code. Anything outside that stack is out of scope.
 
@@ -84,20 +86,39 @@ cairn/
 
 ---
 
-## Adopting CAIRN in a new app
+## Adopting CAIRN in a new app (template flow)
 
-The greenfield path. Detailed walkthrough lives in `docs/adoption-new.md` (forthcoming); this is the outline.
+```bash
+gh repo create barry-napier/<app> --template barry-napier/cairn --private --clone
+cd <app>
+vp install
+vp config                                  # reinstall .vite-hooks/ in the new clone
+```
 
-1. **Stand up the Vite+ shell.** `vp create` for the React+TS template, `npm i convex @convex-dev/better-auth better-auth`. Initialise Convex with `npx convex dev`. Confirm Vite+ git hooks are installed (`vp config`).
-2. **Copy the script contract** from this repo's `package.json` (the entire `verify:*` block). Add `npm-run-all2` and `@commitlint/cli` + `@commitlint/config-conventional` as devDependencies. Copy `commitlint.config.js`.
-3. **Copy the Claude Code layer.** `.claude/settings.json` and everything under `.claude/hooks/`. Make hook scripts executable (`chmod +x`).
-4. **Copy `scripts/verify-convex-prod.sh`** and ensure `verify:convex:prod` in `package.json` invokes it.
-5. **Copy CI workflows** from `.github/workflows/`. Adjust `prod.yml` once you provision a Convex cloud deployment and have `CONVEX_DEPLOY_KEY` available as a repo secret.
-6. **Copy `CLAUDE.md`** as the starting verification contract; trim or add stack-specific notes.
-7. **Configure GitHub branch protection** on `main`: require the `dev` workflow to pass, require linear history, disallow force pushes.
-8. **Run the verification scenarios** in [docs/checklist.md](docs/checklist.md) (forthcoming) to confirm every gate fires.
+Then the per-app wiring (none of this is templatable — each app needs its own credentials):
 
-Target time: under 60 minutes greenfield.
+```bash
+# Convex
+npx convex login                           # if not already
+npx convex dev --once                      # creates dev cloud deployment
+npx convex deploy                          # creates prod cloud deployment
+
+# Better Auth secrets on Convex
+npx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)" --prod
+npx convex env set SITE_URL https://<app>.bnapier.dev --prod
+# repeat without --prod for the dev deployment
+
+# GitHub: clone branch protection from the template
+gh api -X PUT repos/barry-napier/<app>/branches/main/protection \
+  --input <(gh api repos/barry-napier/cairn/branches/main/protection)
+
+# Convex deploy key for CI: dashboard → prod deployment → Settings → Deploy Keys
+gh secret set CONVEX_DEPLOY_KEY -R barry-napier/<app>
+
+# Vercel: import the repo in the dashboard, set VITE_CONVEX_URL + VITE_CONVEX_SITE_URL
+```
+
+Then change `index.html`'s `<title>`, edit `src/App.tsx` to whatever your app actually does, and you're building. Target time: under 15 minutes after `gh repo create`.
 
 ## Adopting CAIRN in an existing app
 
@@ -125,7 +146,7 @@ The pattern is "tested" by running each scenario against a real installation. Ei
 | G   | Declare done with broken code                                 | Stop hook                            | `verify:full` injects failure, agent must keep working |
 | H   | Pre-commit duration                                           | pre-commit budget                    | Under 15s wall-clock                                   |
 
-Status on this repo as of latest audit: A–C, E–H **PASS**; D scenario for Convex prod schema is **gated** until a real Convex cloud deployment is provisioned.
+Status on this repo: **all 8 PASS** (verified 2026-04-28). Convex prod deployment `festive-duck-897` is provisioned; `verify:prod` runs on every push to `main` against the actual deployment.
 
 ---
 
@@ -140,9 +161,10 @@ Status on this repo as of latest audit: A–C, E–H **PASS**; D scenario for Co
 
 ## Status
 
-- v1 in progress. This repository is the reference; one downstream retrofit (`prompts.bnapier.dev` or `auth.bnapier.dev`) is required before v1 is considered done.
+- v1 ships when CAIRN has been used to start a real downstream app via the template flow. `todos.bnapier.dev` is the first.
 - Documentation surface: README ✅ · PRD ✅ · architecture/adoption/checklist/rationale forthcoming.
-- Convex cloud prod deployment: not yet provisioned; `verify:prod` gates fail-closed until it is.
+- Convex cloud prod deployment: provisioned (`festive-duck-897`); `verify:prod` runs end-to-end on every push to `main`.
+- GitHub template: enabled. Click **Use this template** to start a new app.
 
 ---
 
