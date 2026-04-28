@@ -32,7 +32,7 @@ The pattern is composed of four conceptual layers:
 
 1. **Instruction layer** — `CLAUDE.md` and progressive-disclosure skills that tell the agent the rules.
 2. **In-loop enforcement** — Claude Code hooks (`PostToolUse`, `Stop`, `PreToolUse`) that run verifiers as the agent works and inject failures into context.
-3. **Local enforcement** — lefthook + commitlint that gate commits and pushes regardless of how the code was written.
+3. **Local enforcement** — Vite+ managed git hooks (`.vite-hooks/`, installed by `vp config`) + commitlint that gate commits and pushes regardless of how the code was written.
 4. **Authoritative enforcement** — GitHub Actions, branch protection, and Vercel build gates that run on infrastructure the agent cannot bypass.
 
 All layers call the same `npm run verify:*` script contract, so the verification logic lives in exactly one place and every gate runs the same checks at the appropriate scope and depth.
@@ -97,14 +97,14 @@ The "user" here is the developer (Barry) adopting CAIRN into a bnapier.dev app, 
 26. As a developer, I want the script contract to use `npm-run-all` for parallel and serial composition, so that independent checks run concurrently and dependent checks run in order.
 27. As a developer, I want individual script atoms (`verify:lint`, `verify:types`, `verify:convex`, `verify:test`, `verify:build`) callable independently, so that I can debug a single failing layer without running the whole stack.
 
-### Local enforcement (lefthook + commitlint)
+### Local enforcement (vite-hooks + commitlint)
 
-28. As a developer, I want a `lefthook.yml` running `verify:fast` plus changed-file tests in parallel on every commit, so that broken code cannot enter the repo locally.
-29. As a developer, I want `lefthook.yml` running `verify:full` on every push, so that broken pushes are caught before reaching CI.
-30. As a developer, I want lefthook's `stage_fixed: true` configured for the formatter, so that auto-format fixes are re-staged automatically without an "unstaged changes" loop.
+28. As a developer, I want a `.vite-hooks/pre-commit` running `vp staged` on every commit, so that broken code cannot enter the repo locally.
+29. As a developer, I want `.vite-hooks/pre-push` running `npm run verify:full` on every push, so that broken pushes are caught before reaching CI.
+30. As a developer, I want `vp staged` to re-stage auto-fix output automatically, so that there is no "unstaged changes" loop after format fixes.
 31. As a developer, I want commitlint enforcing Conventional Commits format on every commit message, so that history is structured and changelogs are mechanically generatable.
-32. As a developer, I want lefthook to use `{staged_files}` glob expansion for linters and formatters, so that hooks stay fast on incremental changes.
-33. As a developer, I want lefthook to run `tsc --noEmit` on the whole project (not staged files), so that type-checking is correct rather than scoped-and-misleading.
+32. As a developer, I want `vp staged` to scope linters and formatters to staged files, so that hooks stay fast on incremental changes.
+33. As a developer, I want `vp check` to typecheck the whole project (not staged files), so that type-checking is correct rather than scoped-and-misleading.
 
 ### Authoritative enforcement (GitHub Actions + branch protection + Vercel)
 
@@ -177,7 +177,7 @@ The "user" here is the developer (Barry) adopting CAIRN into a bnapier.dev app, 
 
 ### Tooling choices
 
-- **lefthook over Husky.** Faster (Go binary, no Node startup), parallel by default, single config file, built-in `{staged_files}` template (no separate lint-staged needed).
+- **Vite+ managed hooks (`.vite-hooks/`) over Husky/lefthook.** Bundled with Vite+ via `vp config`, no extra dependency, single source of truth alongside the rest of the toolchain. `vp staged` provides staged-file linting and auto-restage out of the box.
 - **commitlint with `@commitlint/config-conventional`.** Industry-standard Conventional Commits enforcement.
 - **Biome over ESLint + Prettier.** Already bundled in Vite+. Faster. Single tool, single config. ESLint plugins are not needed for the bnapier.dev stack.
 - **Vitest over Jest.** Bundled in Vite+. Native Vite/Vite+ integration. `--changed` flag for fast incremental runs.
@@ -223,7 +223,7 @@ The "user" here is the developer (Barry) adopting CAIRN into a bnapier.dev app, 
 
 ### Verification scenarios (each is a test of the pattern)
 
-- Scenario A: introduce a type error → confirm caught by Claude Code `PostToolUse` hook → confirm caught by lefthook pre-commit → confirm caught by CI → confirm Vercel build fails.
+- Scenario A: introduce a type error → confirm caught by Claude Code `PostToolUse` hook → confirm caught by vite-hooks pre-commit → confirm caught by CI → confirm Vercel build fails.
 - Scenario B: introduce a non-conventional commit message → confirm rejected by commitlint at commit-msg hook.
 - Scenario C: attempt force-push to main → confirm rejected by branch protection.
 - Scenario D: introduce a Convex schema change incompatible with production → confirm caught by `verify:convex:prod` in prod pipeline.
@@ -260,7 +260,7 @@ The "user" here is the developer (Barry) adopting CAIRN into a bnapier.dev app, 
 - Apps not on the standard bnapier.dev stack (Postgres, MySQL, Express backends, Next.js, etc.). CAIRN is deliberately stack-locked.
 - Multi-developer / multi-agent workflows. CAIRN v1 assumes a solo developer + Claude Code.
 - Aflac internal use. Aflac's tooling, security, and compliance constraints are different. A CAIRN-Aflac variant is a separate project.
-- Other AI coding agents (Cursor, Codex, Aider, Cline). v1 is Claude Code-only. The lefthook/CI/Vercel layers happen to be agent-agnostic, but the in-loop hook layer is Claude Code-specific.
+- Other AI coding agents (Cursor, Codex, Aider, Cline). v1 is Claude Code-only. The vite-hooks/CI/Vercel layers happen to be agent-agnostic, but the in-loop hook layer is Claude Code-specific.
 - Performance benchmarking infrastructure. Bundle size checks and timing budgets are in scope; full perf regression infrastructure is not.
 - Visual regression testing. Out of scope until a real failure mode justifies it.
 - Telemetry / observability of agent behavior over time. Interesting but not v1.
@@ -311,7 +311,7 @@ github.com/barry-napier/cairn/
 │   └── rationale.md
 ├── reference/
 │   ├── package.json.snippet
-│   ├── lefthook.yml
+│   ├── .vite-hooks/ (managed by `vp config`)
 │   ├── commitlint.config.js
 │   ├── vercel.json
 │   ├── .github/workflows/dev.yml
